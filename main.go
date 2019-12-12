@@ -49,27 +49,32 @@ type Search struct {
 }
 
 func indexHandler(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("hello")
 	tpl.Execute(w, nil)
 }
 
 func searchHandler(w http.ResponseWriter, r *http.Request) {
+	
 
 	u, err := url.Parse(r.URL.String())
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("Internal server error"))
+		w.Write([]byte("Internal server error!"))
 		return
 	}
-
+	
 	params := u.Query()
 	searchKey := params.Get("q")
 	page := params.Get("page")
 	if page == "" {
 		page = "1"
 	}
-	
+
 	search := &Search{}
 	search.SearchKey = searchKey
+
+	
+
 
 	next, err := strconv.Atoi(page)
 	if err != nil {
@@ -79,9 +84,10 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 	
 	search.NextPage =next
 	pageSize := 20
+	endpoint := fmt.Sprintf("https://newsapi.org/v2/everything?q=%s&pageSize=%d&page=%d&apiKey=%s&sortBy=publishedAt&language=en", url.QueryEscape(search.SearchKey), pageSize, search.NextPage, *apiKey)
+	resp, err := http.Get(endpoint)
+	fmt.Println("hello from search", resp)	
 
-	endPoint := fmt.Sprintf("https://newsapi.org/v2/everything?q=%s&pageSize=%d&page=%d&apiKey=%s&sortBy=publishedAt&language=en", url.QueryEscape(search.SearchKey), pageSize, search.NextPage, *apiKey)
-	resp, err := http.Get(endPoint)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -101,10 +107,16 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	search.TotalPages = int(math.Ceil(float64(search.Results.TotalResults / pageSize)))
+	
+	
 	err = tpl.Execute(w, search)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 	}
+	
+	
+
+
 
 }
 
@@ -133,6 +145,7 @@ func main() {
 
 
 	mux.HandleFunc("/search", searchHandler)
-	mux.HandleFunc ("/", indexHandler)
+	mux.HandleFunc("/", indexHandler)
 	http.ListenAndServe(":"+port,mux)
+
 }
